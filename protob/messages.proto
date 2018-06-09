@@ -116,9 +116,6 @@ enum MessageType {
 	MessageType_StellarPublicKey = 201 [(wire_out) = true];
 	MessageType_StellarSignTx = 202 [(wire_in) = true];
 	MessageType_StellarTxOpRequest = 203 [(wire_out) = true];
-	MessageType_StellarSignMessage = 204 [(wire_in) = true];
-	MessageType_StellarMessageSignature = 205 [(wire_out) = true];
-	MessageType_StellarVerifyMessage = 206 [(wire_in) = true];
 	MessageType_StellarCreateAccountOp = 210 [(wire_in) = true];
 	MessageType_StellarPaymentOp = 211 [(wire_in) = true];
 	MessageType_StellarPathPaymentOp = 212 [(wire_in) = true];
@@ -144,6 +141,7 @@ enum MessageType {
  */
 message Initialize {
 	optional bytes state = 1;			// assumed device state, clear session if set and different
+	optional bool skip_passphrase = 2;		// this session should always assume empty passphrase
 }
 
 /**
@@ -169,7 +167,6 @@ message Features {
 	optional bool passphrase_protection = 8;	// is node/mnemonic encrypted using passphrase?
 	optional string language = 9;			// device language
 	optional string label = 10;			// device description label
-	repeated CoinType coins = 11;			// supported coins
 	optional bool initialized = 12;			// does device contain seed?
 	optional bytes revision = 13;			// SCM revision of firmware
 	optional bytes bootloader_hash = 14;		// hash of the bootloader
@@ -661,7 +658,8 @@ message SignTx {
 	optional string coin_name = 3 [default='Bitcoin'];	// coin to use
 	optional uint32 version = 4 [default=1];		// transaction version
 	optional uint32 lock_time = 5 [default=0];		// transaction lock_time
-	optional uint32 decred_expiry = 6;
+	optional uint32 expiry = 6;				// only for Decred and Zcash
+	optional bool overwintered = 7;				// only for Zcash
 }
 
 /**
@@ -680,6 +678,8 @@ message SimpleSignTx {
 	optional string coin_name = 4 [default='Bitcoin'];	// coin to use
 	optional uint32 version = 5 [default=1];		// transaction version
 	optional uint32 lock_time = 6 [default=0];		// transaction lock_time
+	optional uint32 expiry = 7;				// only for Decred and Zcash
+	optional bool overwintered = 8;				// only for Zcash
 }
 
 /**
@@ -1022,36 +1022,6 @@ message StellarPublicKey {
 }
 
 /**
- * Request: ask device to sign the given string
- * @next StellarMessageSignature
- */
-message StellarSignMessage {
-	repeated uint32 address_n = 1;	// BIP-32 path. For compatibility with other wallets, must be m/44'/148'/index'
-
-	optional string message = 2;	// Message to sign
-}
-
-/**
- * Response: device has signed data
- * @prev StellarSignMessage
- */
-message StellarMessageSignature {
-	optional bytes public_key = 1;	// Raw bytes of the public key (no version or checksum)
-	optional bytes signature = 2;   // ed25519 signature bytes
-}
-
-/**
- * Request: ask device to verify that signature is valid (public_key has signed message)
- * @next Success
- * @next Failure
- */
-message StellarVerifyMessage {
-	optional bytes public_key = 1;	// Public key corresponding to the private key that signed the message
-	optional bytes message = 2;		// Binary data that was signed
-	optional bytes signature = 3;	// Signature to verify
-}
-
-/**
  * Request: ask device to sign Stellar transaction
  * @next StellarTxOpRequest
  */
@@ -1341,22 +1311,22 @@ message LiskSignMessage {
 }
 
 /**
- * Response: Signed message
- * @prev LiskSignMessage
- */
+* Response: Signed message
+* @prev LiskSignMessage
+*/
 message LiskMessageSignature {
-	optional string address = 1;
+	optional bytes public_key = 1;
 	optional bytes signature = 2;
 }
 
 /**
- * Request: Ask device to verify message
- * @next Success
- * @next Failure
- */
+* Request: Ask device to verify message
+* @next Success
+* @next Failure
+*/
 message LiskVerifyMessage {
-	optional bytes signature = 1;
-	optional bytes public_key = 2;
+	optional bytes public_key = 1;
+	optional bytes signature = 2;
 	optional bytes message = 3;
 }
 
